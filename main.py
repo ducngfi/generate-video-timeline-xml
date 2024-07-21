@@ -2,36 +2,7 @@ import xml.etree.ElementTree as ET
 import json
 from xml.dom import minidom
 
-# Provide the path to the video file
-video_file_path = '/Users/duc/Videos/20240718_C0925_copy.MP4'
-video_file_url = f'file://{video_file_path}'
-
-# Load and parse the JSON file
-with open('detect_non_silence.json') as f:
-    data = json.load(f)
-
-# Load and parse the existing XML file
-tree = ET.parse('Timeline_Template.xml')
-root = tree.getroot()
-
-# Find the video and audio tracks
-sequence = root.find('sequence')
-media = sequence.find('media')
-video = media.find('video')
-audio = media.find('audio')
-
-# Find the track elements
-video_track = video.find('track')
-audio_track = audio.find('track')
-
-# Remove existing clipitems to start fresh
-for element in video_track.findall('clipitem'):
-    video_track.remove(element)
-for element in audio_track.findall('clipitem'):
-    audio_track.remove(element)
-
-# Define a template for clipitem
-def create_clipitem(id, name, duration, start, end, in_point, out_point, file_id, media_type):
+def create_clipitem(id, name, duration, start, end, in_point, out_point, file_id, video_file_url, media_type):
     clipitem = ET.Element('clipitem', id=id)
     ET.SubElement(clipitem, 'name').text = name
     ET.SubElement(clipitem, 'duration').text = str(duration)
@@ -80,47 +51,86 @@ def create_clipitem(id, name, duration, start, end, in_point, out_point, file_id
     
     return clipitem
 
-# Add each spoken period as a video and audio clipitem
-for i, period in enumerate(data):
-    start_frame = int(period['start'] * 24)
-    end_frame = int(period['end'] * 24)
-    duration_frames = int(period['duration'] * 24)
-    
-    # Create video clipitem
-    video_clipitem = create_clipitem(
-        id=f"spoken_video_{i}",
-        name=f"Spoken Video {i}",
-        duration=duration_frames,
-        start=start_frame,
-        end=end_frame,
-        in_point=start_frame,
-        out_point=end_frame,
-        file_id=f"file_video_{i}",
-        media_type='video'
-    )
-    video_track.append(video_clipitem)
-    
-    # Create audio clipitem
-    audio_clipitem = create_clipitem(
-        id=f"spoken_audio_{i}",
-        name=f"Spoken Audio {i}",
-        duration=duration_frames,
-        start=start_frame,
-        end=end_frame,
-        in_point=start_frame,
-        out_point=end_frame,
-        file_id=f"file_audio_{i}",
-        media_type='audio'
-    )
-    audio_track.append(audio_clipitem)
-
-# Function to pretty print XML without extra newlines
 def pretty_print(element):
     rough_string = ET.tostring(element, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     pretty_string = reparsed.toprettyxml(indent="    ")
     return "\n".join([line for line in pretty_string.split("\n") if line.strip()])
 
-# Write the modified and beautified XML back to a file
-with open('Modified_Timeline_Template.xml', 'w') as f:
-    f.write(pretty_print(root))
+def generate_timeline(video_file_path, json_file_path, xml_template_path, output_xml_path):
+    video_file_url = f'file://{video_file_path}'
+
+    # Load and parse the JSON file
+    with open(json_file_path) as f:
+        data = json.load(f)
+
+    # Load and parse the existing XML file
+    tree = ET.parse(xml_template_path)
+    root = tree.getroot()
+
+    # Find the video and audio tracks
+    sequence = root.find('sequence')
+    media = sequence.find('media')
+    video = media.find('video')
+    audio = media.find('audio')
+
+    # Find the track elements
+    video_track = video.find('track')
+    audio_track = audio.find('track')
+
+    # Remove existing clipitems to start fresh
+    for element in video_track.findall('clipitem'):
+        video_track.remove(element)
+    for element in audio_track.findall('clipitem'):
+        audio_track.remove(element)
+
+    # Add each spoken period as a video and audio clipitem
+    for i, period in enumerate(data):
+        start_frame = int(period['start'] * 24)
+        end_frame = int(period['end'] * 24)
+        duration_frames = int(period['duration'] * 24)
+        
+        # Create video clipitem
+        video_clipitem = create_clipitem(
+            id=f"spoken_video_{i}",
+            name=f"Spoken Video {i}",
+            duration=duration_frames,
+            start=start_frame,
+            end=end_frame,
+            in_point=start_frame,
+            out_point=end_frame,
+            file_id=f"file_video_{i}",
+            video_file_url=video_file_url,
+            media_type='video'
+        )
+        video_track.append(video_clipitem)
+        
+        # Create audio clipitem
+        audio_clipitem = create_clipitem(
+            id=f"spoken_audio_{i}",
+            name=f"Spoken Audio {i}",
+            duration=duration_frames,
+            start=start_frame,
+            end=end_frame,
+            in_point=start_frame,
+            out_point=end_frame,
+            file_id=f"file_audio_{i}",
+            video_file_url=video_file_url,
+            media_type='audio'
+        )
+        audio_track.append(audio_clipitem)
+
+    # Write the modified and beautified XML back to a file
+    with open(output_xml_path, 'w') as f:
+        f.write(pretty_print(root))
+
+def main():
+    video_file_path = '/Users/duc/Videos/20240718_C0925_copy.MP4'
+    json_file_path = 'detect_non_silence.json'
+    xml_template_path = 'Timeline_Template.xml'
+    output_xml_path = 'Modified_Timeline_Template.xml'
+    
+    generate_timeline(video_file_path, json_file_path, xml_template_path, output_xml_path)
+
+if __name__ == '__main__':
+    main()
