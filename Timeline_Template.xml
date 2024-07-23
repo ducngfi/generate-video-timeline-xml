@@ -2,7 +2,7 @@
 <!DOCTYPE xmeml>
 <xmeml version="5">
     <sequence>
-        <name>Timeline 1 (Resolve)</name>
+        <name>Timeline</name>
         <duration>11652</duration>
         <rate>
             <timebase>24</timebase>
